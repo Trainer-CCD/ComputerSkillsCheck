@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Windows Simulator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; }
+  body { background: #0078d7; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+  
+  /* Desktop */
+  #desktop { flex: 1; position: relative; background: linear-gradient(135deg, #1e5799 0%, #207cca 51%, #7db9e8 100%); padding: 20px; }
+  .icon { width: 80px; text-align: center; color: white; cursor: pointer; padding: 8px; border-radius: 4px; }
+  .icon:hover { background: rgba(255, 255, 255, 0.2); }
+  .icon img { width: 48px; height: 48px; display: block; margin: 0 auto 4px; }
+  .icon span { font-size: 12px; text-shadow: 1px 1px 2px black; }
+
+  /* Window */
+  .window { position: absolute; top: 30px; left: 60px; width: 850px; height: 550px; background: white; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); display: none; flex-direction: column; overflow: hidden; border: 1px solid #ccc; }
+  .window-header { background: #e7eaed; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ccc; }
+  .window-title { font-size: 13px; color: #333; font-weight: 600; }
+  .window-controls span { cursor: pointer; padding: 4px 8px; font-weight: bold; }
+  .window-controls span:hover { background: #dcdcdc; }
+  .close-btn:hover { background: #e81123 !important; color: white; }
+
+  /* Chrome Browser Mockup */
+  .browser-nav { background: #f1f3f4; padding: 8px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid #e0e0e0; }
+  .url-bar { flex: 1; background: white; border: 1px solid #ccc; border-radius: 16px; padding: 4px 12px; font-size: 13px; }
+  .bookmark-btn { background: none; border: none; font-size: 16px; cursor: pointer; color: #5f6368; }
+  .bookmark-btn.active { color: #f4b400; }
+  .bookmarks-bar { background: #f1f3f4; padding: 4px 12px; font-size: 12px; display: flex; gap: 12px; border-bottom: 1px solid #e0e0e0; min-height: 24px; }
+  .bookmark-item { cursor: pointer; color: #333; background: #e1e3e4; padding: 2px 8px; border-radius: 4px; }
+
+  /* Content Area */
+  .browser-content { flex: 1; background: #fafafa; overflow-y: auto; display: flex; flex-direction: column; }
+  
+  /* Login Screen */
+  .login-card { max-width: 380px; margin: 40px auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border: 1px solid #e0e0e0; width: 100%; }
+  .login-card h2 { margin-bottom: 16px; font-size: 20px; color: #333; }
+  .form-group { margin-bottom: 14px; text-align: left; }
+  .form-group label { display: block; font-size: 12px; margin-bottom: 4px; color: #666; }
+  .form-group input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+  .btn { width: 100%; padding: 10px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
+  .btn:hover { background: #005a9e; }
+
+  /* Status Banner */
+  .status-message { padding: 10px; margin-bottom: 12px; border-radius: 4px; font-size: 13px; display: none; }
+  .status-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+  /* Outlook UI */
+  .outlook-container { display: flex; height: 100%; }
+  .outlook-sidebar { width: 180px; background: #f3f2f1; border-right: 1px solid #e1dfdd; padding: 10px 0; }
+  .sidebar-item { padding: 8px 16px; font-size: 13px; color: #323130; cursor: pointer; display: flex; justify-content: space-between; }
+  .sidebar-item.active { background: #edebe9; font-weight: bold; color: #0078d4; }
+  
+  .outlook-mail-list { width: 300px; border-right: 1px solid #e1dfdd; background: white; overflow-y: auto; }
+  .mail-item { padding: 12px; border-bottom: 1px solid #f3f2f1; cursor: pointer; }
+  .mail-item:hover { background: #f3f2f1; }
+  .mail-item.unread { border-left: 4px solid #0078d4; background: #faf9f8; }
+  .mail-item.selected { background: #eff6fc; }
+  .mail-sender { font-size: 13px; font-weight: 600; color: #323130; margin-bottom: 2px; }
+  .mail-subject { font-size: 12px; font-weight: 600; color: #0078d4; margin-bottom: 4px; }
+  .mail-snippet { font-size: 11px; color: #605e5c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .outlook-reading-pane { flex: 1; background: white; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; }
+  .pane-placeholder { color: #a19f9d; font-size: 14px; text-align: center; margin-top: 100px; }
+  .email-header { border-bottom: 1px solid #e1dfdd; padding-bottom: 12px; margin-bottom: 16px; }
+  .email-subject-title { font-size: 18px; color: #323130; margin-bottom: 8px; }
+  .email-sender-info { font-size: 12px; color: #605e5c; }
+  .email-body { font-size: 14px; color: #323130; line-height: 1.5; }
+
+  /* Taskbar */
+  #taskbar { height: 40px; background: rgba(0,0,0,0.8); display: flex; align-items: center; padding: 0 10px; justify-content: space-between; }
+  .start-btn { color: white; font-weight: bold; padding: 6px 12px; cursor: pointer; border-radius: 4px; }
+  .start-btn:hover { background: rgba(255,255,255,0.1); }
+</style>
+</head>
+<body>
+
+<div id="desktop">
+  <div class="icon" onclick="openChrome()">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/e/e8/Google_Chrome_icon_%282011-2016%29.svg" alt="Chrome">
+    <span>Google Chrome</span>
+  </div>
+
+  <div class="window" id="chromeWindow">
+    <div class="window-header">
+      <span class="window-title">Google Chrome</span>
+      <div class="window-controls">
+        <span onclick="closeChrome()" class="close-btn">✕</span>
+      </div>
+    </div>
+    
+    <div class="browser-nav">
+      <input type="text" class="url-bar" id="urlBar" value="https://outlook.live.com" readonly>
+      <button class="bookmark-btn" id="starBtn" onclick="toggleBookmark()" title="Bookmark this page">★</button>
+    </div>
+
+    <div class="bookmarks-bar" id="bookmarksBar"></div>
+
+    <div class="browser-content" id="browserContent">
+      <div class="login-card" id="loginCard">
+        <h2>Sign In</h2>
+        <div id="statusBox" class="status-message status-error">
+          <strong>Incorrect Credentials.</strong><br>Email: Test@outlook.com<br>Password: TestAccount#1
+        </div>
+        <div class="form-group">
+          <label>Email Address</label>
+          <input type="email" id="emailInput" placeholder="Enter email">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="passwordInput" placeholder="Enter password">
+        </div>
+        <button class="btn" onclick="validateLogin()">Sign In</button>
+      </div>
+
+      <div class="outlook-container" id="outlookView" style="display: none;">
+        <div class="outlook-sidebar">
+          <div class="sidebar-item active">Inbox <span id="unreadCount">3</span></div>
+          <div class="sidebar-item">Sent Items</div>
+          <div class="sidebar-item">Drafts</div>
+          <div class="sidebar-item">Junk Email</div>
+        </div>
+
+        <div class="outlook-mail-list" id="mailList">
+          </div>
+
+        <div class="outlook-reading-pane" id="readingPane">
+          <div class="pane-placeholder">Select an item to read</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="taskbar">
+  <div class="start-btn">Start</div>
+</div>
+
+<script>
+  const TARGET_EMAIL = "Test@outlook.com";
+  const TARGET_PASS = "TestAccount#1";
+  let isBookmarked = false;
+
+  const mockEmails = [
+    {
+      id: 1,
+      sender: "Microsoft Security Team",
+      subject: "Credentials code",
+      snippet: "Your verification code is 059585...",
+      body: "059585",
+      unread: true,
+      time: "10:42 AM"
+    },
+    {
+      id: 2,
+      sender: "IT Support Desk",
+      subject: "System Maintenance Notice",
+      snippet: "Scheduled maintenance will occur this weekend starting at...",
+      body: "Hello Team,\n\nPlease be advised that server maintenance is scheduled for this Saturday at 10:00 PM EST. Access may be intermittent.",
+      unread: true,
+      time: "9:15 AM"
+    },
+    {
+      id: 3,
+      sender: "HR Department",
+      subject: "Welcome to the Assessment",
+      snippet: "Please complete all onboarding tasks assigned to your profile...",
+      body: "Welcome! Complete the tasks in your queue to demonstrate your proficiency with internal system tools.",
+      unread: true,
+      time: "Yesterday"
+    }
+  ];
+
+  function openChrome() {
+    document.getElementById('chromeWindow').style.display = 'flex';
+  }
+
+  function closeChrome() {
+    document.getElementById('chromeWindow').style.display = 'none';
+  }
+
+  function toggleBookmark() {
+    const starBtn = document.getElementById('starBtn');
+    const bookmarksBar = document.getElementById('bookmarksBar');
+    
+    if (!isBookmarked) {
+      isBookmarked = true;
+      starBtn.classList.add('active');
+      bookmarksBar.innerHTML = `<div class="bookmark-item">Outlook Login</div>`;
+    } else {
+      isBookmarked = false;
+      starBtn.classList.remove('active');
+      bookmarksBar.innerHTML = '';
+    }
+  }
+
+  function validateLogin() {
+    const email = document.getElementById('emailInput').value.trim();
+    const pass = document.getElementById('passwordInput').value.trim();
+    const statusBox = document.getElementById('statusBox');
+
+    if (email === TARGET_EMAIL && pass === TARGET_PASS) {
+      document.getElementById('loginCard').style.display = 'none';
+      document.getElementById('outlookView').style.display = 'flex';
+      renderMailList();
+    } else {
+      statusBox.style.display = 'block';
+    }
+  }
+
+  function renderMailList() {
+    const mailList = document.getElementById('mailList');
+    mailList.innerHTML = '';
+
+    mockEmails.forEach(email => {
+      const item = document.createElement('div');
+      item.className = `mail-item ${email.unread ? 'unread' : ''}`;
+      item.id = `mail-${email.id}`;
+      item.onclick = () => openEmail(email.id);
+      
+      item.innerHTML = `
+        <div class="mail-sender">${email.sender}</div>
+        <div class="mail-subject">${email.subject}</div>
+        <div class="mail-snippet">${email.snippet}</div>
+      `;
+      mailList.appendChild(item);
+    });
+  }
+
+  function openEmail(id) {
+    const email = mockEmails.find(e => e.id === id);
+    if (!email) return;
+
+    // Mark as read UI
+    email.unread = false;
+    const itemEl = document.getElementById(`mail-${id}`);
+    if (itemEl) itemEl.classList.remove('unread');
+
+    // Highlight selected item
+    document.querySelectorAll('.mail-item').forEach(el => el.classList.remove('selected'));
+    if (itemEl) itemEl.classList.add('selected');
+
+    // Update unread count
+    const unreadCount = mockEmails.filter(e => e.unread).length;
+    document.getElementById('unreadCount').textContent = unreadCount;
+
+    // Render Reading Pane
+    const pane = document.getElementById('readingPane');
+    pane.innerHTML = `
+      <div class="email-header">
+        <div class="email-subject-title">${email.subject}</div>
+        <div class="email-sender-info"><strong>From:</strong> ${email.sender} &bull; ${email.time}</div>
+      </div>
+      <div class="email-body">${email.body}</div>
+    `;
+  }
+</script>
+</body>
+</html>
